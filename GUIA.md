@@ -1,7 +1,7 @@
 # Guia de leitura do código
 
-Este arquivo existe para estudo. Quando o código estiver dominado, ele e os comentários
-explicativos podem sair juntos.
+Este arquivo existe para estudo. O código não tem comentários: o que ele faz está nos nomes, e o
+porquê está aqui.
 
 ## Ordem de leitura
 
@@ -23,8 +23,9 @@ o tipo não confia em quem chama, ele deriva. Leia as três defesas (target zero
 `NaN`) e depois abra `Tests/GoalSourceTests/GoalProgressTests.swift` para ver cada uma testada.
 
 **4. `Model/DailySnapshot.swift`**
-Por que data e progressos andam colados num tipo só. Os dois motivos estão no comentário do tipo,
-e os dois têm teste.
+Por que data e progressos andam colados num tipo só. Dois motivos, os dois com teste: à meia-noite
+o stream emite zeros e sem a data não dá para distinguir virada de dia de falha de leitura; e o
+cache precisa saber se o que guardou é de hoje ou de ontem.
 
 **5. `Persistence/SnapshotStoring.swift`**
 O primeiro protocolo do package. Aqui começa a ideia central: dependência que fala com o mundo
@@ -32,8 +33,8 @@ externo entra por protocolo. Duas implementações no mesmo arquivo, uma delas d
 
 **6. `Queries/HealthStoreProviding.swift`**
 **Este é o arquivo mais importante para entender a arquitetura.** Repare que nenhum tipo do
-HealthKit aparece nas assinaturas. Pergunte-se por que, e leia o comentário do topo depois de ter
-formado a sua própria resposta.
+HealthKit aparece nas assinaturas. Pergunte-se por que antes de continuar. A resposta está na
+seção "As cinco decisões" mais abaixo, item 2.
 
 **7. `Store/HealthKitGoalStore.swift`**
 O ator. Leia de cima para baixo até `// MARK: - Encanamento das sessões`, pare, e só depois volte

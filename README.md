@@ -12,13 +12,15 @@ Não conhece backend, UI, cores, tema, grupo nem usuário. Meta que o usuário m
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/<org>/GoalSource.git", from: "1.0.0")
+    .package(url: "https://github.com/tiagocomth/GoalSource.git", from: "1.0.0")
 ]
 ```
 
 ```swift
 .target(name: "App", dependencies: ["GoalSource"])
 ```
+
+No Xcode: **File › Add Package Dependencies…**, cole `https://github.com/tiagocomth/GoalSource` e escolha *Up to Next Major* a partir de `1.0.0`.
 
 ## Configuração do app
 
