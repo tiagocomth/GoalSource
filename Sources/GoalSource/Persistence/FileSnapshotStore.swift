@@ -39,7 +39,7 @@ public actor FileSnapshotStore: SnapshotStoring {
             cached = state
             return state
         } catch {
-            Log.persistence.error("Descartando cache ilegível em \(self.fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            Log.persistence.error("Discarding unreadable cache at \(self.fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
             let empty = PersistedState()
             cached = empty
             return empty
@@ -64,7 +64,7 @@ public actor FileSnapshotStore: SnapshotStoring {
             return container
         }
         if appGroupIdentifier != nil {
-            Log.persistence.error("Container do App Group indisponível; os widgets não vão ver este cache.")
+            Log.persistence.error("App Group container unavailable, widgets will not see this cache.")
         }
         let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         return fallback ?? URL(fileURLWithPath: NSTemporaryDirectory())

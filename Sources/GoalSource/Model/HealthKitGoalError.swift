@@ -10,28 +10,28 @@ public enum HealthKitGoalError: LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .healthDataUnavailable:
-            "Os dados de Saúde não estão disponíveis neste aparelho."
+            "Health data is not available on this device."
         case let .authorizationDenied(metrics):
-            "O acesso foi negado para: \(metrics.map(\.rawValue).sorted().joined(separator: ", "))."
+            "Access was denied for: \(metrics.map(\.rawValue).sorted().joined(separator: ", "))."
         case let .unsupportedMetric(metric):
-            "A métrica \(metric.rawValue) não é suportada nesta versão do sistema."
+            "The metric \(metric.rawValue) is not supported on this OS version."
         case let .writeNotPermitted(metric):
-            "O app não grava amostras de \(metric.rawValue)."
+            "This app does not write \(metric.rawValue) samples."
         case let .queryFailed(underlying):
-            "A consulta ao Saúde falhou: \(underlying)."
+            "The Health query failed: \(underlying)."
         }
     }
 
     public var recoverySuggestion: String? {
         switch self {
         case .healthDataUnavailable:
-            "Use metas manuais, ou abra o app no iPhone ou no Apple Watch."
+            "Open the app on an iPhone or Apple Watch."
         case .authorizationDenied:
-            "Libere o dado da meta em Ajustes › Saúde › Acesso e Dispositivos."
+            "Enable this data in Settings, Health, Data Access & Devices."
         case .unsupportedMetric, .writeNotPermitted:
-            "Escolha outra métrica para esta meta."
+            "Pick a different metric for this goal."
         case .queryFailed:
-            "Tente de novo em instantes."
+            "Try again in a moment."
         }
     }
 

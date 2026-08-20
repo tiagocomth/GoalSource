@@ -145,7 +145,7 @@ public final class LiveHealthStore: HealthStoreProviding, @unchecked Sendable {
         for type in types {
             let query = HKObserverQuery(sampleType: type, predicate: nil) { _, completion, error in
                 if let error {
-                    Log.queries.error("Observer de \(type.identifier, privacy: .public) falhou: \(error.localizedDescription, privacy: .public)")
+                    Log.queries.error("Observer for \(type.identifier, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
                 } else {
                     onChange()
                 }
@@ -174,7 +174,7 @@ public final class LiveHealthStore: HealthStoreProviding, @unchecked Sendable {
                     try await disableBackgroundDelivery(for: type)
                 }
             } catch {
-                Log.queries.error("Background delivery \(enabled ? "ligar" : "desligar", privacy: .public) falhou para \(metric.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                Log.queries.error("Background delivery \(enabled ? "on" : "off", privacy: .public) failed for \(metric.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
         #else

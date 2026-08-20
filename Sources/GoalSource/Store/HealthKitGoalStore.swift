@@ -58,7 +58,7 @@ public actor HealthKitGoalStore {
             write: Set(metrics.filter(\.isWritable))
         )
         await mutateState { $0.requestedMetrics.formUnion(metrics) }
-        Log.store.info("Autorização pedida para \(metrics.count, privacy: .public) métrica(s).")
+        Log.store.info("Requested authorization for \(metrics.count, privacy: .public) metric(s).")
     }
 
     public func progress(for goal: GoalDefinition, on date: Date) async throws -> GoalProgress {
@@ -117,7 +117,7 @@ public actor HealthKitGoalStore {
         }
         guard amount > 0 else { return }
         try await healthStore.write(amount, for: metric, at: date)
-        Log.store.info("Registrado \(amount, privacy: .public) \(metric.displayUnitLabel, privacy: .public) de \(metric.rawValue, privacy: .public).")
+        Log.store.info("Logged \(amount, privacy: .public) \(metric.displayUnitLabel, privacy: .public) of \(metric.rawValue, privacy: .public).")
     }
 
     public func dayKey(for date: Date) -> String {
@@ -185,7 +185,7 @@ public actor HealthKitGoalStore {
                     try await healthStore.setBackgroundDelivery(enabled: true, for: metrics)
                 }
             } catch {
-                Log.queries.error("Atualização ao vivo indisponível: \(error.localizedDescription, privacy: .public)")
+                Log.queries.error("Live updates unavailable: \(error.localizedDescription, privacy: .public)")
             }
         }
 
@@ -223,7 +223,7 @@ public actor HealthKitGoalStore {
         do {
             continuation.yield(try await snapshot(for: goals, on: Date()))
         } catch {
-            Log.queries.error("Falha ao atualizar o snapshot: \(error.localizedDescription, privacy: .public)")
+            Log.queries.error("Snapshot refresh failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -237,7 +237,7 @@ public actor HealthKitGoalStore {
         do {
             loaded = try await configuration.snapshotStore.load()
         } catch {
-            Log.persistence.error("Cache ilegível, começando vazio: \(error.localizedDescription, privacy: .public)")
+            Log.persistence.error("Cache unreadable, starting empty: \(error.localizedDescription, privacy: .public)")
             loaded = PersistedState()
         }
         state = loaded
@@ -251,7 +251,7 @@ public actor HealthKitGoalStore {
         do {
             try await configuration.snapshotStore.save(updated)
         } catch {
-            Log.persistence.error("Falha ao gravar o cache: \(error.localizedDescription, privacy: .public)")
+            Log.persistence.error("Cache write failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

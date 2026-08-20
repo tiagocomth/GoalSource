@@ -38,7 +38,7 @@ public struct GoalProgress: Codable, Sendable, Hashable, Identifiable {
             fraction = min(1, sanitizedValue / sanitizedTarget)
             isComplete = sanitizedValue >= sanitizedTarget
         } else {
-            Log.model.warning("Meta \(goalID, privacy: .public) tem target não positivo; reportando 0%.")
+            Log.model.warning("Goal \(goalID, privacy: .public) has a non-positive target, reporting 0%.")
             fraction = 0
             isComplete = false
         }

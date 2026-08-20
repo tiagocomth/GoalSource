@@ -1,14 +1,14 @@
 # GoalSource
 
-SDK de HealthKit. Recebe as metas monitoradas, devolve o progresso delas no dia e mantém isso atualizado sozinho.
+A HealthKit SDK. You hand it the goals you want tracked, it gives you today's progress for each one, and it keeps that fresh on its own.
 
-Não conhece backend, UI, cores, tema, grupo nem usuário. Meta que o usuário marca na mão ("ler 20 páginas") também está fora: não tem nada a ver com HealthKit, e o app já é dono desse estado.
+It knows nothing about your backend, your UI, your colors, your theme, your groups or your users. Goals the user ticks by hand ("read 20 pages") are out of scope too, since they have nothing to do with HealthKit and your app already owns that state.
 
-- Swift 5.10, `iOS 17+` / `watchOS 10+`, sem dependências externas
-- API 100% `async/await`, um ator, tudo `Sendable`
-- HealthKit importado condicionalmente: o package compila e roda os testes em CI sem HealthKit
+- Swift 5.10, iOS 17+ and watchOS 10+, no external dependencies
+- Fully async/await, one actor, everything `Sendable`
+- HealthKit is imported conditionally, so the package builds and its tests run on CI machines that don't have it
 
-## Instalação
+## Installation
 
 ```swift
 dependencies: [
@@ -20,38 +20,38 @@ dependencies: [
 .target(name: "App", dependencies: ["GoalSource"])
 ```
 
-No Xcode: **File › Add Package Dependencies…**, cole `https://github.com/tiagocomth/GoalSource` e escolha *Up to Next Major* a partir de `1.0.0`.
+In Xcode: **File › Add Package Dependencies…**, paste `https://github.com/tiagocomth/GoalSource`, and pick *Up to Next Major* from `1.0.0`.
 
-## Configuração do app
+## Setting up your app
 
 ### Info.plist
 
-Nos dois targets (iPhone e Watch):
+On both targets, iPhone and Watch:
 
 ```xml
 <key>NSHealthShareUsageDescription</key>
-<string>Para acompanhar suas metas de atividade junto com o seu grupo.</string>
+<string>To track your activity goals alongside your group.</string>
 <key>NSHealthUpdateUsageDescription</key>
-<string>Para registrar a água que você bebeu na sua meta de hidratação.</string>
+<string>To log the water you drank toward your hydration goal.</string>
 ```
 
-`NSHealthUpdateUsageDescription` só é necessário se o grupo puder ter meta de água, mas o sistema exige a chave antes de o app chegar a saber disso. Deixe as duas sempre.
+You only need `NSHealthUpdateUsageDescription` if a group can have a water goal, but the system wants the key before your app is in any position to know that. Ship both.
 
 ### Capabilities
 
-| Capability | Onde | Para quê |
+| Capability | Where | Why |
 |---|---|---|
-| HealthKit | iPhone + Watch | qualquer leitura |
-| HealthKit › Background Delivery | só iPhone | `enablesBackgroundDelivery: true` |
-| App Groups | iPhone + Watch | cache compartilhado com widgets e complicações |
+| HealthKit | iPhone and Watch | any read at all |
+| HealthKit › Background Delivery | iPhone only | `enablesBackgroundDelivery: true` |
+| App Groups | iPhone and Watch | sharing the cache with widgets and complications |
 
-O App Group vale **dentro de um mesmo aparelho**: une o app e suas extensões. Ele não atravessa iPhone e Watch. Desde o watchOS 2 o app do relógio roda no relógio, com container próprio, então cada um mantém o seu cache. Sem App Group o package continua funcionando, só que o widget passa a não ver o último snapshot.
+App Groups work **within a single device**: they connect your app to its extensions. They do not span an iPhone and its Apple Watch. Since watchOS 2 the watch app runs on the watch with its own container, so each one keeps its own cache. Without an App Group the package still works, your widget just won't see the last snapshot.
 
-Cada aparelho pode usar um identificador diferente. Usar o mesmo é conveniente, não é requisito.
+The two devices can even use different identifiers. Using the same one is convenient, not required.
 
-## Uso
+## Usage
 
-Uma instância por app, em algum lugar acessível:
+Create one instance somewhere you can reach it:
 
 ```swift
 import GoalSource
@@ -63,7 +63,7 @@ enum Goals {
 }
 ```
 
-As metas vêm do seu backend; o `id` tem que ser o mesmo para todos do grupo. Os atalhos poupam digitar `kind:`:
+Goals come from your backend. The shortcuts save you from spelling out `metric:` every time:
 
 ```swift
 let goals = [
@@ -73,9 +73,11 @@ let goals = [
 ]
 ```
 
-Passe só as metas monitoradas; as manuais o app resolve sozinho. O `id` é uma `String` opaca: passe exatamente o que o seu backend usa, sem conversão. Ele volta em `GoalProgress.goalID` para você casar resposta com pergunta.
+Pass only the tracked goals. Manual ones are your app's business.
 
-Na tela, use o `GoalsMonitor`: ele é `@MainActor @Observable`, então o corpo da view lê propriedade normal, sem `await`.
+`id` is an opaque `String`. Pass whatever your backend already uses, no conversion needed. It comes back on `GoalProgress.goalID` so you can match answers to questions.
+
+On screen, use `GoalsMonitor`. It's `@MainActor @Observable`, so your view body reads plain properties with no `await` in sight:
 
 ```swift
 struct MyPartView: View {
@@ -87,41 +89,41 @@ struct MyPartView: View {
                 GoalRing(fraction: monitor.fraction(for: goal))
             }
         }
-        .task { await monitor.start() }   // pede permissão, carrega o cache e transmite
+        .task { await monitor.start() }
     }
 }
 ```
 
-`start()` roda até a `.task` ser cancelada, que é o que o SwiftUI faz quando a view sai da tela. As queries do HealthKit são desregistradas sozinhas.
+`start()` runs until the surrounding task is cancelled, which is exactly what SwiftUI does when the view goes away. The HealthKit queries unregister themselves.
 
-Se preferir falar direto com o ator, tudo continua acessível:
+If you'd rather talk to the actor directly, everything is still there:
 
 ```swift
 let snapshot = try await Goals.store.snapshot(for: goals, on: .now)
 try await Goals.store.log(0.25, for: .water, at: .now)
 ```
 
-O `DailySnapshot` é a resposta do package: a data mais o progresso das metas monitoradas daquele dia, colados num tipo só. Ele é `Codable` e não carrega nada de HealthKit, mas não presuma que ele é o seu formato de persistência. Se o seu backend guarda uma linha por meta, o snapshot é insumo da escrita, e a tradução mora na sua camada de sincronização, que é também onde ele se junta às metas manuais.
+`DailySnapshot` is the package's answer: a date plus that day's progress, glued together. It's `Codable` and carries nothing from HealthKit, but don't assume it's your storage format. If your backend keeps one row per goal, the snapshot is input to the write, and the translation belongs in your sync layer, which is also where it meets your manual goals.
 
-Para decidir sob qual dia publicar, use `await Goals.store.dayKey(for: date)`: ele devolve o mesmo `yyyy-MM-dd` que o package usa para ler o HealthKit. Inventar o seu põe participante de outro fuso escrevendo num dia diferente do que você lê.
+To decide which day you're publishing under, use `await Goals.store.dayKey(for: date)`. It returns the same `yyyy-MM-dd` the package uses to read HealthKit. Rolling your own puts a participant in another time zone writing to a different day than the one you read.
 
-### Estado "sem acesso ao Health"
+### The "no Health access" state
 
-Uma meta monitorada nunca falha por falta de permissão. Ela volta em zero com um `unavailableReason`, e a UI decide o que mostrar:
+A tracked goal never fails for lack of permission. It comes back at zero with an `unavailableReason`, and your UI decides what to show:
 
 ```swift
 switch progress.unavailableReason {
 case nil:                          RingView(fraction: progress.fraction)
-case .noSamples:                   RingView(fraction: 0)          // zero de verdade, ou leitura negada
+case .noSamples:                   RingView(fraction: 0)          // a real zero, or a denied read
 case .authorizationNotRequested:   AskForHealthAccessView()
 case .authorizationDenied:         OpenHealthSettingsView()
 case .metricUnavailableOnDevice:   UnsupportedMetricView()
 }
 ```
 
-## Exemplo SwiftUI: quatro anéis ao vivo
+## SwiftUI example: four live rings
 
-As cores vêm do tema do app; o package não as conhece.
+Colors come from your theme. The package doesn't know about them.
 
 ```swift
 import SwiftUI
@@ -129,7 +131,7 @@ import GoalSource
 
 struct MyPartView: View {
     @State private var monitor: GoalsMonitor
-    let palette: [GoalDefinition.ID: Color]
+    let palette: [String: Color]
 
     var body: some View {
         VStack(spacing: 32) {
@@ -187,28 +189,21 @@ struct GoalRow: View {
             Circle().fill(color).frame(width: 10, height: 10)
             Text(goal.title)
             Spacer()
-            trailing
-        }
-    }
-
-    @ViewBuilder
-    private var trailing: some View {
-        if needsAccess {
-            Label("Sem acesso", systemImage: "heart.slash")
-                .labelStyle(.iconOnly)
-                .foregroundStyle(.secondary)
-        } else {
-            Text(progress?.fraction ?? 0, format: .percent.precision(.fractionLength(0)))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+            if needsAccess {
+                Image(systemName: "heart.slash").foregroundStyle(.secondary)
+            } else {
+                Text(progress?.fraction ?? 0, format: .percent.precision(.fractionLength(0)))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
 ```
 
-### Previews e simulador
+### Previews and the simulator
 
-O simulador não tem o app Saúde, então toda leitura real volta zero. Para preview e para rodar no simulador com número na tela:
+The simulator has no Health app, so every real read comes back empty. To get numbers on screen in a preview, or while running on a simulator:
 
 ```swift
 #Preview {
@@ -219,93 +214,91 @@ O simulador não tem o app Saúde, então toda leitura real volta zero. Para pre
 }
 ```
 
-`GoalsMonitor.preview` monta um store sobre `StubHealthStore` e cache em memória. Nada de HealthKit, nada de disco. O mesmo vale para `HealthKitGoalStore.preview(totals:)` se você não usar o monitor.
+`GoalsMonitor.preview` wires up a `StubHealthStore` and an in-memory cache. No HealthKit, no disk. `HealthKitGoalStore.preview(totals:)` does the same if you're not using the monitor.
 
 ## watchOS
 
-O mesmo target compila no Watch, e a API é a mesma. Para os anéis e o gráfico de barras basta:
+The same target builds on the Watch, with the same API:
 
 ```swift
-let fractions = try await store.todayFractions(for: goals)   // [String: Double], indexado pelo id da meta
+let fractions = try await store.todayFractions(for: goals)   // [String: Double], keyed by goal id
 ```
 
-O watchOS tem HealthKit próprio, já com o que os sensores do relógio registraram. O Watch não precisa perguntar nada ao iPhone para desenhar os anéis: ele lê o HealthKit dele mesmo.
+watchOS has its own HealthKit store, already holding whatever the watch's sensors recorded. The Watch doesn't need to ask the iPhone for anything to draw its rings.
 
-O que muda:
+What changes:
 
-- background delivery é ignorado (a API não existe no watchOS); o stream continua funcionando em primeiro plano
-- criar metas e configurações continuam exclusivos do iPhone: o package não impede, o app é que não expõe
+- background delivery is ignored, since the API doesn't exist on watchOS, and the stream still works in the foreground
+- creating goals and settings stay iPhone-only, which the package doesn't enforce; your app just doesn't offer them there
 
-### O que atravessa entre os aparelhos, e o que não
+### What crosses between devices
 
-| | Como chega do outro lado |
+| | How it reaches the other side |
 |---|---|
-| Meta monitorada (HealthKit) | o sistema já espelha as amostras do Watch para o iPhone, sem código seu |
-| Meta manual (checkmark) | fora do escopo deste SDK: é estado do app, e o app é quem sincroniza |
+| Tracked goal (HealthKit) | the system already mirrors the watch's samples to the iPhone, no code from you |
+| Manual goal (checkmark) | out of scope here, it's app state and your app syncs it |
 
-A sincronização das amostras Watch → iPhone também não é instantânea: depende dos aparelhos se falarem, e leva de segundos a minutos. O número no relógio pode ficar à frente do número no telefone por um tempo. É comportamento do sistema, não do package.
+Watch to iPhone mirroring isn't instant either. It depends on the devices talking to each other and takes anywhere from seconds to minutes, so the number on the watch can run ahead of the phone for a while. That's the system's behavior, not the package's.
 
-## Testes
+## Tests
 
 ```
 swift test
 ```
 
-Roda em qualquer macOS, sem simulador e sem HealthKit. O ator depende do protocolo `HealthStoreProviding`, e o alvo de testes injeta um `MockHealthStore`. As 71 asserções cobrem cálculo de fração (clamp, target zero, `NaN`), limites de dia e fuso (incluindo horário de verão), autorização parcial, debounce do stream, virada do dia, cancelamento sem vazar observer, e o cache persistindo e restaurando. O `GoalsMonitor` tem os seus: leitura segura antes do primeiro snapshot, prompt opcional, erro de escrita virando `lastError`, e troca de metas limpando o snapshot velho.
+Runs on any Mac, no simulator and no HealthKit. The actor depends on the `HealthStoreProviding` protocol, and the test target injects a `MockHealthStore`. The 71 assertions cover fraction math (clamping, zero targets, `NaN`), day and time zone boundaries including a daylight saving day, partial authorization, stream debounce, the day rollover, cancelling without leaking an observer, and the cache persisting and restoring. `GoalsMonitor` has its own: reading safely before the first snapshot, an optional prompt, write errors turning into `lastError`, and swapping goals clearing the stale snapshot.
 
-Os testes que dependem de `HKUnit` de verdade estão sob `#if canImport(HealthKit)` e só rodam quando você compila para iOS ou watchOS:
+The tests that need a real `HKUnit` sit behind `#if canImport(HealthKit)` and only run when you build for iOS or watchOS:
 
 ```
 xcodebuild -scheme GoalSource -destination 'generic/platform=iOS' build
 xcodebuild -scheme GoalSource -destination 'generic/platform=watchOS' build
 ```
 
-## Arquitetura
+## Architecture
 
 ```
-Model/         GoalMetric, GoalDefinition (+ atalhos), GoalProgress, DailySnapshot,
-               AuthorizationSummary, erros
-Store/         HealthKitGoalStore (o ator), Configuration, GoalsMonitor (@Observable)
+Model/         GoalMetric, GoalDefinition (+ shortcuts), GoalProgress, DailySnapshot,
+               AuthorizationSummary, errors
+Store/         HealthKitGoalStore (the actor), Configuration, GoalsMonitor (@Observable)
 Queries/       HealthStoreProviding, LiveHealthStore (HKHealthStore), StubHealthStore,
                HealthObservationToken
 Persistence/   SnapshotStoring, FileSnapshotStore, InMemorySnapshotStore, PersistedState
-Support/       Logger, aritmética de dia/calendário
+Support/       Logger, day and calendar math
 ```
 
-São duas portas de entrada para a mesma coisa. `HealthKitGoalStore` é o ator, e é onde mora a lógica. `GoalsMonitor` é uma casca `@MainActor` em cima dele para o SwiftUI não ter que lidar com `await` no corpo da view. Use o monitor na tela e o ator em qualquer outro lugar; nada é exclusivo de um dos dois.
+There are two doors into the same thing. `HealthKitGoalStore` is the actor, and that's where the logic lives. `GoalsMonitor` is a `@MainActor` shell on top of it so SwiftUI doesn't have to deal with `await` inside a view body. Use the monitor on screen and the actor everywhere else. Neither one holds anything back from you.
 
-A fronteira que importa é o `HealthStoreProviding`: nada de HealthKit atravessa esse protocolo. Unidades ficam do lado de dentro (`LiveHealthStore`), matemática de dia fica do lado de fora (`HealthKitGoalStore`). É o que deixa o ator inteiro testável numa máquina sem HealthKit.
+The boundary that matters is `HealthStoreProviding`: no HealthKit type crosses it. Units stay inside `LiveHealthStore`, day math stays inside `HealthKitGoalStore`. That's what makes the whole actor testable on a machine with no HealthKit at all.
 
-Sem `print`. Tudo vai pro `Logger` no subsystem `com.goalsource`, categorias `model`, `store`, `queries` e `persistence`.
+No `print` anywhere. Everything goes through `Logger` under the `com.goalsource` subsystem, in the `model`, `store`, `queries` and `persistence` categories.
 
-## Limitações e decisões
+## Limitations and decisions
 
-**Corrida não é o mesmo que caminhada.** O HealthKit não tem um quantity type de "distância correndo": `distanceWalkingRunning` conta o dia inteiro, ida à padaria incluída. Então `runningDistance` soma a distância registrada *dentro de workouts de corrida* (`HKSampleQuery` sobre `predicateForWorkouts(with: .running)`), enquanto `walkingDistance` usa o total do dia. As duas apontam para o mesmo `hkQuantityTypeIdentifier` porque é esse o tipo que precisa de permissão; quem separa é `GoalMetric.readsWorkouts`. Consequência: uma meta de corrida só progride se houver workout registrado. Correr sem iniciar um treino não conta, e isso é o comportamento correto para a meta.
+**Running is not the same as walking.** HealthKit has no "distance while running" quantity type: `distanceWalkingRunning` counts your whole day, trip to the bakery included. So `runningDistance` sums the distance recorded *inside running workouts* (`HKSampleQuery` over `predicateForWorkouts(with: .running)`), while `walkingDistance` uses the day's total. Both point at the same `hkQuantityTypeIdentifier` because that's the type needing permission; `GoalMetric.readsWorkouts` is what separates them. The consequence is that a running goal only moves if there's a recorded workout. Running without starting one doesn't count, and for a running goal that's the correct behavior.
 
-**Nadar usa o quantity type, não os workouts.** `distanceSwimming` só é produzido por workouts de natação, então a query simples já é precisa. Não vale o segundo caminho.
+**Swimming uses the quantity type, not workouts.** `distanceSwimming` is only ever produced by swim workouts, so the simple query is already accurate. A second code path wouldn't buy anything.
 
-**Só água é gravável.** Passos, distância e energia vêm dos sensores; escrever à mão corromperia o Health do usuário. Tudo que não é água lança `writeNotPermitted`.
+**Only water is writable.** Steps, distance and energy come from sensors, and writing them by hand would corrupt the user's Health data. Anything but water throws `writeNotPermitted`.
 
-**Workout manual ficou de fora.** Você mencionou "água e workouts manuais" na escrita, mas um workout é `HKWorkout`, não `HKQuantitySample`: não cabe na assinatura `log(_ amount: Double, for metric:)`. Registrar treino exige `HKWorkoutBuilder`, sessão, tipo de atividade, duração e energia. É uma superfície inteira, e a decisão foi não inventá-la agora. Se o produto precisar, entra como `startWorkout`/`endWorkout` num arquivo separado, sem mexer no que existe.
+**Logging workouts is out.** A workout is an `HKWorkout`, not an `HKQuantitySample`, so it doesn't fit the `log(_ amount: Double, for metric:)` signature. Recording one needs `HKWorkoutBuilder`, a session, an activity type, a duration and energy. That's a whole surface of its own, and inventing it now wasn't the right call. If the product needs it, it arrives as `startWorkout` and `endWorkout` in a separate file without disturbing any of this.
 
-**Nada de `HKAnchoredObjectQuery`.** O anel precisa do total do dia, não das amostras novas. `HKObserverQuery` avisa que mudou e o package recalcula o total do dia com `HKStatisticsQuery`. Âncora só ajudaria se o package processasse amostra por amostra, o que ele não faz. Se um dia precisar de histórico incremental, aí sim.
+**No `HKAnchoredObjectQuery`.** The ring needs the day's total, not the new samples. `HKObserverQuery` says something changed and the package recomputes the day with `HKStatisticsQuery`. An anchor would only help if the package processed samples one by one, which it doesn't. If incremental history ever matters, that's when to revisit.
 
-**Nada de `HKStatisticsCollectionQuery`.** Ela existe para séries de vários dias. Aqui a janela é sempre um dia só, e uma statistics query simples é mais barata.
+**No `HKStatisticsCollectionQuery`.** That one exists for multi-day series. Here the window is always a single day, and a plain statistics query is cheaper.
 
-**O debounce é *trailing*, sem teto.** Uma rajada contínua de amostras adia a emissão indefinidamente enquanto durar. Na prática o HealthKit agrupa em lotes e a rajada termina; se aparecer um caso patológico, o conserto é um `maxWait`.
+**The debounce is trailing, with no ceiling.** A continuous burst of samples postpones the emission for as long as it lasts. In practice HealthKit batches and the burst ends; if a pathological case ever shows up, the fix is a max wait.
 
-**Leitura negada é indistinguível de dia vazio.** É de propósito na Apple: um app não pode descobrir que o usuário escondeu dados. Por isso `MetricAuthorization` só reporta `.denied`/`.authorized` para água (a única gravável) e, para o resto, `.notRequested`/`.requested` com base no que o package persistiu ter pedido. `ProgressUnavailableReason.noSamples` significa "zero ou sem acesso", e a UI deve escolher um texto que sirva para os dois.
+**A denied read is indistinguishable from an empty day.** That's deliberate on Apple's side: an app must not be able to discover that a user hid their data. So `MetricAuthorization` only reports `.denied` and `.authorized` for water, the one writable metric, and for everything else it reports `.notRequested` or `.requested` based on what the package recorded having asked for. `ProgressUnavailableReason.noSamples` means "zero or no access", and your UI should pick wording that works for both.
 
-**Target zero não completa a meta.** `target <= 0` devolve fração 0 e `isComplete == false`, com warning no log. Uma meta malformada aparecendo como anel cheio esconde o bug de quem a criou.
+**A zero target doesn't complete a goal.** `target <= 0` yields a fraction of 0 and `isComplete == false`, with a warning in the log. A malformed goal showing up as a full ring hides the bug from whoever created it.
 
-**Snapshot com mais de quatro metas trunca.** Fica nas quatro primeiras e loga `.error`. Um `init` de modelo que lança complicaria toda a cadeia por um caso que é bug de chamador.
+**`isCumulative` is `true` for all seven metrics.** The flag exists because the query layer picks `.cumulativeSum` based on it. It only turns `false` the day weight or heart rate shows up.
 
-**`isCumulative` é `true` para as sete métricas.** O flag existe porque a camada de query escolhe `.cumulativeSum` com base nele; só vira `false` se entrar peso ou frequência cardíaca.
+**`.macOS(.v14)` is in the platform list.** It isn't a shipping platform. It's there so `swift test` runs on a CI machine without Xcode; without a macOS minimum, even `Logger` fails to compile.
 
-**`.macOS(.v14)` na lista de plataformas.** Não é plataforma de produto. Está ali só para `swift test` rodar numa máquina de CI sem Xcode: sem um mínimo de macOS declarado, nem o `Logger` compila.
+**The package syncs nothing.** It produces `DailySnapshot` and stops. Publishing, receiving your teammates' progress, sending nudges and resolving conflicts all belong to your sync layer.
 
-**O package não sincroniza nada.** Ele produz `DailySnapshot` e para por aí. Publicar, receber o dos colegas, enviar lembrete e resolver conflito são responsabilidade da camada de sincronização.
+**It doesn't sync between iPhone and Watch either.** The cache is local to each device. For tracked goals that doesn't matter, because the system mirrors the samples from the watch to the phone on its own.
 
-**E não sincroniza entre iPhone e Watch tampouco.** O cache é local a cada aparelho. Para metas monitoradas isso não importa, porque o próprio sistema espelha as amostras do HealthKit do relógio para o telefone.
-
-**Meta manual ficou de fora por completo.** Um check de "ler 20 páginas" não tem relação nenhuma com HealthKit, o app já é dono desse estado e já o publica no backend. Deixar o SDK guardar isso criaria um segundo dono do mesmo fato. O app junta as duas origens na hora de montar os anéis, que é onde ele já conhece os dois lados.
+**Manual goals are entirely out.** A "read 20 pages" checkmark has nothing to do with HealthKit, your app already owns that state, and it already publishes it. Letting the SDK store it too would create a second owner for the same fact. Your app merges the two sources when it builds the rings, which is where it already knows about both.
